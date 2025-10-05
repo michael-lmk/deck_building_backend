@@ -62,6 +62,17 @@ export class PartyGateway implements OnGatewayConnection, OnGatewayDisconnect {
     }
   }
 
+  private createExpandedDeck(cards: Card[]): Card[] {
+    return cards.reduce((acc, card) => {
+      const quantity = card.quantity || 1;
+      for (let i = 0; i < quantity; i++) {
+        // Créer une nouvelle instance pour chaque carte
+        acc.push({ ...card });
+      }
+      return acc;
+    }, [] as Card[]);
+  }
+
   @SubscribeMessage('createRoom')
   createRoom(
     @MessageBody() data: CreateRoomDto,
@@ -72,13 +83,13 @@ export class PartyGateway implements OnGatewayConnection, OnGatewayDisconnect {
       return;
     }
 
-    const defaultDeck: Card[] = [...this.allCards.default];
+    const initialDeck = this.createExpandedDeck(this.allCards.default);
+    console.log(`Initial deck created with ${initialDeck.length} cards:`, initialDeck.map(c => c.name));
 
     this.rooms[data.roomId] = {
       id: data.roomId,
       players: {},
       market: [],
-      defaultDeck,
       started: false,
       turnOrder: [],
       currentTurnIndex: 0,
@@ -90,12 +101,12 @@ export class PartyGateway implements OnGatewayConnection, OnGatewayDisconnect {
       socketId: socket.id,
       name: 'Player1',
       ready: false,
-      hand: [...defaultDeck],
-      deck: [...defaultDeck],
+      hand: [],
+      deck: initialDeck,
       discard: [],
     };
 
-    socket.emit('roomCreated', { roomId: data.roomId, hand: defaultDeck });
+    socket.emit('roomCreated', { roomId: data.roomId });
     console.log(`Room ${data.roomId} created by ${socket.id}`);
   }
 
@@ -108,7 +119,6 @@ export class PartyGateway implements OnGatewayConnection, OnGatewayDisconnect {
         id: data.roomId,
         players: {}, // objet
         market: [],
-        defaultDeck: [...this.allCards.default], // Add defaultDeck property
         started: false,
         turnOrder: [],
         currentTurnIndex: 0,
@@ -117,18 +127,20 @@ export class PartyGateway implements OnGatewayConnection, OnGatewayDisconnect {
       this.rooms[data.roomId] = room;
     }
 
+    const initialDeck = this.createExpandedDeck(this.allCards.default);
+
     room.players[client.id] = {
       socketId: client.id,
       name: data.name,
       ready: false,
-      hand: [...this.allCards.default],
-      deck: [...this.allCards.default],
+      hand: [],
+      deck: initialDeck,
       discard: [],
     };
 
     client.join(data.roomId);
 
-    client.emit('joinedRoom', { hand: [...this.allCards.default] });
+    client.emit('joinedRoom', { });
 
     // Convertir en tableau pour l’envoi
     this.server
@@ -145,97 +157,113 @@ export class PartyGateway implements OnGatewayConnection, OnGatewayDisconnect {
     if (!room) return;
 
     room.players[socket.id].ready = true;
-    this.server
-      .to(data.roomId)
-      .emit('updatePlayers', Object.values(room.players));
+    this.server.to(data.roomId).emit('updatePlayers', Object.values(room.players));
 
     const allReady = Object.values(room.players).every((p) => p.ready);
     if (allReady && !room.started) {
       room.started = true;
 
-      // Génération d'une boutique partagée de 7 cartes aléatoires
-      const shuffled = [...this.allCards.non_star, ...this.allCards.star].sort(
-        () => Math.random() - 0.5,
-      );
-      room.market = shuffled.slice(0, 7);
+      // Mélanger le deck de chaque joueur
+      for (const playerId in room.players) {
+        const player = room.players[playerId];
+        player.deck = player.deck.sort(() => Math.random() - 0.5);
+        player.hand = [];
+        player.discard = [];
+      }
 
-      // Définir l'ordre des tours
       room.turnOrder = Object.keys(room.players);
       room.currentTurnIndex = 0;
 
-      // Notifier le premier joueur
       const currentPlayerId = room.turnOrder[room.currentTurnIndex];
-      room.party = {
-        guestsInHouse: [],
-        houseCapacity: 5,
-        isActive: true,
-      };
-      this.server.to(currentPlayerId).emit('yourTurn', { market: room.market });
+      this.startTurn(room, currentPlayerId);
 
       this.server.to(data.roomId).emit('startGame', { market: room.market });
-      console.log(
-        `Room ${data.roomId} started - turn order: ${room.turnOrder.join(', ')}`,
-      );
     }
   }
 
-  @SubscribeMessage('inviteGuest')
-  inviteGuest(
-    @MessageBody() data: { roomId: string; cardName: string },
-    @ConnectedSocket() socket: Socket,
-  ) {
-    const room = this.rooms[data.roomId];
-    if (!room?.party?.isActive) return;
-
-    const player = room.players[socket.id];
+  private startTurn(room: Room, playerId: string) {
+    const player = room.players[playerId];
     if (!player) return;
 
-    // Vérifier que c'est bien le joueur actif
-    if (socket.id !== room.turnOrder[room.currentTurnIndex]) {
+    room.party = {
+      guestsInHouse: [],
+      houseCapacity: 5,
+      isActive: true,
+    };
+    this.server.to(playerId).emit('yourTurn', {
+      party: room.party,
+      deck: player.deck,
+      discard: player.discard,
+    });
+    this.server.to(room.id).emit('partyUpdate', room.party.guestsInHouse);
+  }
+
+  @SubscribeMessage('drawCard')
+  drawCard(
+    @MessageBody() data: { roomId: string },
+    @ConnectedSocket() socket: Socket,
+  ) {
+    console.log(`'drawCard' event received from ${socket.id}`);
+    const room = this.rooms[data.roomId];
+    if (!room) {
+      console.log('Room not found');
+      return;
+    }
+    if (!room.party?.isActive) {
+      console.log('Party is not active');
+      return;
+    }
+
+    const player = room.players[socket.id];
+    const currentPlayerId = room.turnOrder[room.currentTurnIndex];
+    console.log(`Current player should be: ${currentPlayerId}`);
+
+    if (!player || socket.id !== currentPlayerId) {
+      console.log(`Not your turn. Player: ${player?.socketId}, Expected: ${currentPlayerId}`);
       socket.emit('error', 'Not your turn');
       return;
     }
 
-    // Vérifier si la carte est dans sa main
-    const cardIndex = player.hand.findIndex((c) => c.name === data.cardName);
-    if (cardIndex === -1) {
-      socket.emit('error', 'Card not in hand');
+    console.log(`Checks passed. Player deck size: ${player.deck.length}, Discard size: ${player.discard.length}`);
+
+    // Piocher une carte
+    if (player.deck.length === 0) {
+      console.log('Deck is empty, reshuffling discard pile.');
+      player.deck = player.discard.sort(() => Math.random() - 0.5);
+      player.discard = [];
+    }
+
+    if (player.deck.length === 0) {
+      // Le joueur n'a plus de cartes, terminer la fête
+      this.endParty({ roomId: data.roomId }, socket);
       return;
     }
 
-    const card = player.hand[cardIndex];
-
-    // Ajouter à la maison
+    const card = player.deck.pop();
+    console.log(`Player drew: ${card.name}`);
+    player.discard.push(card); // Mettre la carte dans la défausse pour le prochain cycle
     room.party.guestsInHouse.push(card);
 
-    // Supprimer de la main
-    player.hand.splice(cardIndex, 1);
+    // Notifier le client de l'état mis à jour du deck
+    socket.emit('deckStateUpdated', { deck: player.deck, discard: player.discard });
 
-    // Vérifier les conditions d'arrêt
-    const troubleCount = room.party.guestsInHouse.filter(
-      (c) => c.trouble,
-    ).length;
-    if (troubleCount > 2) {
-      // Fête stoppée par les problèmes
-      room.party.isActive = false;
-      this.server
-        .to(socket.id)
-        .emit('partyStopped', { reason: 'Trop de trouble ! Tour perdu' });
+    console.log(`After draw. Player deck size: ${player.deck.length}, Discard size: ${player.discard.length}`);
+
+    this.server.to(data.roomId).emit('partyUpdate', room.party.guestsInHouse);
+
+    // Vérifier les conditions de défaite (bust)
+    const troubleCount = room.party.guestsInHouse.filter((c) => c.trouble).length;
+    if (troubleCount >= 3) {
+      this.server.to(socket.id).emit('partyBusted', { reason: 'Trop de trouble ! La police est intervenue.' });
+      this.endParty({ roomId: data.roomId }, socket, true /* isBusted */);
       return;
     }
 
-    if (room.party.guestsInHouse.length > room.party.houseCapacity) {
-      // Capacité dépassée (peut arriver à cause de certaines cartes)
-      room.party.isActive = false;
-      this.server
-        .to(socket.id)
-        .emit('partyStopped', { reason: 'Capacité dépassée ! Tour perdu' });
+    if (room.party.guestsInHouse.length >= room.party.houseCapacity) {
+      this.server.to(socket.id).emit('partyBusted', { reason: 'La maison est pleine ! Les pompiers ont fermé la fête.' });
+      this.endParty({ roomId: data.roomId }, socket, true /* isBusted */);
       return;
     }
-
-    // Informer le joueur et les spectateurs
-    this.server.to(socket.id).emit('handUpdate', player.hand);
-    this.server.to(socket.id).emit('partyUpdate', room.party.guestsInHouse);
   }
 
   @SubscribeMessage('buyCard')
@@ -328,7 +356,8 @@ export class PartyGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
     if (room.currentTurnIndex === 0) {
       this.startPartyInternal(data.roomId);
-    } else {
+    }
+    else {
       this.server.to(nextPlayerId).emit('yourTurn', { market: room.market });
     }
   }
@@ -337,40 +366,29 @@ export class PartyGateway implements OnGatewayConnection, OnGatewayDisconnect {
   endParty(
     @MessageBody() data: { roomId: string },
     @ConnectedSocket() socket: Socket,
+    isBusted = false, // Ajout d'un drapeau pour les tours perdus
   ) {
     const room = this.rooms[data.roomId];
-    if (!room?.party?.isActive) return;
+    if (!room || !room.party.isActive) return;
 
     const player = room.players[socket.id];
     if (!player) return;
 
     room.party.isActive = false;
 
-    const guests = room.party.guestsInHouse;
-    const troubleCount = guests.filter((c) => c.trouble).length;
-    const houseCapacity = room.party.houseCapacity;
-
-    let results;
-    if (troubleCount > 2 || guests.length > houseCapacity) {
-      results = { popularity: 0, money: 0 }; // tour perdu
-    } else {
-      const popularity = guests.reduce(
-        (sum, g) => sum + (Number(g.popularity) || 0),
-        0,
-      );
-      const money = guests.reduce((sum, g) => sum + (Number(g.money) || 0), 0);
-
-      results = { popularity, money };
+    let results = { popularity: 0, money: 0 };
+    if (!isBusted) {
+      const guests = room.party.guestsInHouse;
+      results.popularity = guests.reduce((sum, g) => sum + (Number(g.popularity) || 0), 0);
+      results.money = guests.reduce((sum, g) => sum + (Number(g.money) || 0), 0);
     }
+    // Si isBusted, les résultats restent à 0
 
     this.server.to(socket.id).emit('partyResults', results);
 
     // Passer au joueur suivant
     room.currentTurnIndex = (room.currentTurnIndex + 1) % room.turnOrder.length;
     const nextPlayerId = room.turnOrder[room.currentTurnIndex];
-    this.server.to(nextPlayerId).emit('yourTurn', {
-      hand: room.players[nextPlayerId].hand,
-      houseCapacity: 5,
-    });
+    this.startTurn(room, nextPlayerId);
   }
 }

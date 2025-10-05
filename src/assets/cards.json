@@ -3,7 +3,7 @@
     "default": [
       {
         "name": "Vieil ami",
-        "quantity": 4,
+        "quantity": 2,
         "cost": 2,
         "popularity": 1,
         "money": 0,
@@ -23,7 +23,7 @@
       },
       {
         "name": "Copain sauvage",
-        "quantity": 4,
+        "quantity": 2,
         "cost": null,
         "popularity": 2,
         "money": 0,

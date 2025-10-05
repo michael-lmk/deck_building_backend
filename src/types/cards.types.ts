@@ -10,6 +10,7 @@ export interface Card {
   ability?: string | null; // description de la capacité
   trouble: boolean; // true si PROBLÈME !
   buyable?: boolean; // false si ne peut pas être acheté (ex: Wild Buddy)
+  quantity?: number; // Nombre d'exemplaires de cette carte
 }
 
 export interface CardsJson {
