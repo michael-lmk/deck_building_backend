@@ -1,0 +1,384 @@
+{
+  "cards": {
+    "default": [
+      {
+        "name": "Vieil ami",
+        "quantity": 4,
+        "cost": 2,
+        "popularity": 1,
+        "money": 0,
+        "ability": null,
+        "trouble": false,
+        "buyable": true
+      },
+      {
+        "name": "Rich Pal",
+        "quantity": 2,
+        "cost": 3,
+        "popularity": 0,
+        "money": 1,
+        "ability": null,
+        "trouble": false,
+        "buyable": true
+      },
+      {
+        "name": "Copain sauvage",
+        "quantity": 4,
+        "cost": null,
+        "popularity": 2,
+        "money": 0,
+        "ability": null,
+        "trouble": true,
+        "buyable": false
+      }
+    ],
+    "non_star": [
+      {
+        "name": "Conducteur",
+        "cost": 3,
+        "popularity": 0,
+        "money": 0,
+        "ability": "Récupérez un invité spécifique pour l'ajouter à la maison",
+        "trouble": false
+      },
+      {
+        "name": "Soldat I.",
+        "cost": 4,
+        "popularity": 2,
+        "money": -1,
+        "ability": "Récupérez un invité spécifique pour l'ajouter à la maison",
+        "trouble": false
+      },
+      {
+        "name": "Hippie",
+        "cost": 4,
+        "popularity": 1,
+        "money": 0,
+        "ability": "Annule passivement un PROBLÈME",
+        "trouble": false
+      },
+      {
+        "name": "Chien mignon",
+        "cost": 7,
+        "popularity": 2,
+        "money": 0,
+        "ability": "Annule passivement un PROBLÈME",
+        "trouble": false
+      },
+      {
+        "name": "Sécurité",
+        "cost": 4,
+        "popularity": 0,
+        "money": 0,
+        "ability": "Éliminez un invité",
+        "trouble": false
+      },
+      {
+        "name": "Lutteur",
+        "cost": 9,
+        "popularity": 2,
+        "money": 0,
+        "ability": "Éliminez un invité",
+        "trouble": false
+      },
+      {
+        "name": "Chien de garde",
+        "cost": 4,
+        "popularity": 2,
+        "money": 0,
+        "ability": "Regardez le prochain invité et acceptez/refusez",
+        "trouble": false
+      },
+      {
+        "name": "Espionner",
+        "cost": 8,
+        "popularity": 0,
+        "money": 2,
+        "ability": "Regardez le prochain invité et acceptez/refusez",
+        "trouble": false
+      },
+      {
+        "name": "Maître du gril",
+        "cost": 5,
+        "popularity": 2,
+        "money": 0,
+        "ability": "Déplace tous les invités hors de la fête et remanie",
+        "trouble": false
+      },
+      {
+        "name": "Athlète",
+        "cost": 6,
+        "popularity": 1,
+        "money": 1,
+        "ability": "Déplace tous les invités hors de la fête et remanie",
+        "trouble": false
+      },
+      {
+        "name": "Danseur",
+        "cost": 7,
+        "popularity": "variable",
+        "money": 0,
+        "ability": "+1/4/9/16 selon le nombre de danseurs",
+        "trouble": false
+      },
+      {
+        "name": "Monsieur Populaire",
+        "cost": 5,
+        "popularity": 3,
+        "money": 0,
+        "ability": "Apporte un invité supplémentaire aléatoire",
+        "trouble": false
+      },
+      {
+        "name": "Célébrité",
+        "cost": 11,
+        "popularity": 2,
+        "money": 3,
+        "ability": "Apporte deux invités supplémentaires aléatoires",
+        "trouble": false
+      },
+      {
+        "name": "Preneur de billets",
+        "cost": 4,
+        "popularity": -1,
+        "money": 2,
+        "ability": null,
+        "trouble": false
+      },
+      {
+        "name": "Comédien",
+        "cost": 5,
+        "popularity": 0,
+        "money": -1,
+        "ability": "+5 popularité si fête pleine",
+        "trouble": false
+      },
+      {
+        "name": "Photographe",
+        "cost": 5,
+        "popularity": 1,
+        "money": -1,
+        "ability": "Double la récompense d’un invité",
+        "trouble": false
+      },
+      {
+        "name": "Traiteur",
+        "cost": 5,
+        "popularity": 4,
+        "money": -1,
+        "ability": null,
+        "trouble": false
+      },
+      {
+        "name": "Commissaire-priseur",
+        "cost": 9,
+        "popularity": 0,
+        "money": 3,
+        "ability": null,
+        "trouble": false
+      },
+      {
+        "name": "Mascotte",
+        "cost": 5,
+        "popularity": 1,
+        "money": 0,
+        "ability": "+1 popularité par Vieil Ami",
+        "trouble": false
+      },
+      {
+        "name": "Introverti",
+        "cost": 4,
+        "popularity": 1,
+        "money": 0,
+        "ability": "+1 popularité par espace vide",
+        "trouble": false
+      },
+      {
+        "name": "Styliste",
+        "cost": 7,
+        "popularity": 0,
+        "money": -1,
+        "ability": "Ajoute +1 permanent à un invité (<9)",
+        "trouble": false
+      },
+      {
+        "name": "Barman",
+        "cost": 11,
+        "popularity": 1,
+        "money": 0,
+        "ability": "+2 argent par PROBLÈME",
+        "trouble": false
+      },
+      {
+        "name": "Écrivain",
+        "cost": 8,
+        "popularity": 1,
+        "money": 0,
+        "ability": "+2 popularité par PROBLÈME",
+        "trouble": false
+      },
+      {
+        "name": "Grimpeur",
+        "cost": 12,
+        "popularity": "scaling",
+        "money": 0,
+        "ability": "+1 popularité par apparition (max 9)",
+        "trouble": false
+      },
+      {
+        "name": "Pom-pom girl",
+        "cost": 5,
+        "popularity": 1,
+        "money": 0,
+        "ability": "Réinitialise les actions des invités",
+        "trouble": false
+      },
+      {
+        "name": "Accueillant",
+        "cost": 5,
+        "popularity": 1,
+        "money": 0,
+        "ability": "Admet le prochain invité et active sa récompense immédiate",
+        "trouble": false
+      },
+      {
+        "name": "Magicien",
+        "cost": 5,
+        "popularity": 1,
+        "money": 0,
+        "ability": "Échange un non-star contre un star",
+        "trouble": false
+      },
+      {
+        "name": "Cupidon",
+        "cost": 8,
+        "popularity": 1,
+        "money": 0,
+        "ability": "Éjecte deux invités côte à côte",
+        "trouble": false
+      },
+      {
+        "name": "Conseiller",
+        "cost": 7,
+        "popularity": 0,
+        "money": 0,
+        "ability": "Supprime tous les statuts PROBLÈME",
+        "trouble": false
+      },
+      {
+        "name": "Loup-garou",
+        "cost": 5,
+        "popularity": 4,
+        "money": 0,
+        "ability": "Un PROBLÈME toutes les deux apparitions",
+        "trouble": true
+      },
+      {
+        "name": "Singe",
+        "cost": 3,
+        "popularity": 4,
+        "money": 0,
+        "ability": null,
+        "trouble": true
+      },
+      {
+        "name": "Rock Star",
+        "cost": 5,
+        "popularity": 3,
+        "money": 2,
+        "ability": null,
+        "trouble": true
+      },
+      {
+        "name": "Gangster",
+        "cost": 6,
+        "popularity": 0,
+        "money": 4,
+        "ability": null,
+        "trouble": true
+      },
+      {
+        "name": "Joueur",
+        "cost": 7,
+        "popularity": 2,
+        "money": 3,
+        "ability": null,
+        "trouble": true
+      }
+    ],
+    "star": [
+      {
+        "name": "Étranger",
+        "cost": 40,
+        "popularity": 0,
+        "money": 0,
+        "ability": null,
+        "trouble": false
+      },
+      {
+        "name": "Lutin",
+        "cost": 50,
+        "popularity": 0,
+        "money": 3,
+        "ability": null,
+        "trouble": false
+      },
+      {
+        "name": "Génie",
+        "cost": 55,
+        "popularity": 0,
+        "money": 0,
+        "ability": "Récupérez un invité spécifique",
+        "trouble": false
+      },
+      {
+        "name": "Dragon",
+        "cost": 30,
+        "popularity": 0,
+        "money": -3,
+        "ability": null,
+        "trouble": false
+      },
+      {
+        "name": "Dinosaure",
+        "cost": 25,
+        "popularity": 0,
+        "money": 0,
+        "ability": null,
+        "trouble": true
+      },
+      {
+        "name": "Sirène",
+        "cost": 35,
+        "popularity": 0,
+        "money": 0,
+        "ability": "Apporte un invité supplémentaire aléatoire",
+        "trouble": false
+      },
+      {
+        "name": "Fantôme",
+        "cost": 45,
+        "popularity": 0,
+        "money": 0,
+        "ability": "Élimine un invité",
+        "trouble": false
+      },
+      {
+        "name": "Licorne",
+        "cost": 45,
+        "popularity": 0,
+        "money": 0,
+        "ability": "Annule passivement un PROBLÈME",
+        "trouble": false
+      },
+      {
+        "name": "Super-héros",
+        "cost": 50,
+        "popularity": 3,
+        "money": 0,
+        "ability": null,
+        "trouble": false
+      }
+    ]
+  }
+}
