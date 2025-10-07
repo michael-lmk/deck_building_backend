@@ -1,6 +1,10 @@
-export type CardType = 'default' | 'guest' | 'star';
+export enum CardType {
+  DEFAULT = 'default',
+  GUEST = 'guest',
+  STAR = 'star',
+}
 
-export interface Card {
+export class Card {
   id: string; // identifiant unique
   name: string;
   type: CardType;
@@ -8,7 +12,7 @@ export interface Card {
   popularity: number;
   money: number; // argent ou coût
   ability?: string | null; // description de la capacité
-  trouble: boolean; // true si PROBLÈME !
+  trouble: boolean; // true si PROBLème !
   buyable?: boolean; // false si ne peut pas être acheté (ex: Wild Buddy)
   quantity?: number; // Nombre d'exemplaires de cette carte
 }
