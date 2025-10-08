@@ -1,12 +1,11 @@
 import { Player } from './player.entity';
 import { Card } from './card.entity';
-
 export class Room {
   id: string;
-  players: Record<string, Player>; // clé = socketId
+  players: Record<string, Player>;
   market: Card[];
   started: boolean;
-  turnOrder: string[]; // liste de socketId
+  turnOrder: string[];
   currentTurnIndex: number;
 
   constructor(id: string) {
@@ -20,12 +19,5 @@ export class Room {
 
   addPlayer(player: Player) {
     this.players[player.socketId] = player;
-  }
-
-  setPlayerReady(playerId: string) {
-    const player = this.players[playerId];
-    if (player) {
-      player.ready = true;
-    }
   }
 }

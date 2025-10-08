@@ -3,8 +3,8 @@
     "default": [
       {
         "name": "Vieil ami",
-        "quantity": 2,
-        "cost": 2,
+        "quantity": 4,
+        "cost": 0,
         "popularity": 1,
         "money": 0,
         "ability": null,
@@ -14,7 +14,7 @@
       {
         "name": "Rich Pal",
         "quantity": 2,
-        "cost": 3,
+        "cost": 0,
         "popularity": 0,
         "money": 1,
         "ability": null,
@@ -23,7 +23,7 @@
       },
       {
         "name": "Copain sauvage",
-        "quantity": 2,
+        "quantity": 4,
         "cost": null,
         "popularity": 2,
         "money": 0,

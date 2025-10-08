@@ -30,10 +30,6 @@ export class PartyGateway implements OnGatewayConnection, OnGatewayDisconnect {
     const file = path.join(__dirname, '../assets/cards.json');
     this.allCards = JSON.parse(fs.readFileSync(file, 'utf-8'))
       .cards as CardsJson;
-
-    console.log(
-      `Cards loaded: default(${this.allCards.default.length}), non_star(${this.allCards.non_star.length}), star(${this.allCards.star.length})`,
-    );
   }
 
   handleConnection(socket: Socket) {
@@ -133,16 +129,94 @@ export class PartyGateway implements OnGatewayConnection, OnGatewayDisconnect {
     @ConnectedSocket() socket: Socket,
   ) {
     const room = this.rooms[data.roomId];
-    if (!room) {
+    const player = room.players[socket.id];
+
+    if (!room || !player) {
       // Optional: handle room not found error
       return;
     }
 
-    room.setPlayerReady(socket.id);
+    player.toggleReady();
 
     // Convertir en tableau pour l’envoi
     this.server
       .to(data.roomId)
       .emit('updatePlayers', Object.values(room.players));
+
+    if (
+      Object.values(room.players).every((p) => p.ready) &&
+      Object.values(room.players).length >= 1
+    ) {
+      this.server.to(data.roomId).emit('startGame');
+      let turnOrder = Object.keys(room.players);
+      room.turnOrder = turnOrder;
+      room.started = true;
+      room.currentTurnIndex = 0;
+
+      // Permet d'initialiser le tour du premier joueur
+      room.players[turnOrder[room.currentTurnIndex]].initializeRound();
+
+      this.server
+        .to(room.turnOrder[room.currentTurnIndex])
+        .emit('yourTurn', room.turnOrder);
+    }
+  }
+
+  @SubscribeMessage('startRound')
+  initRound(
+    @MessageBody() data: { roomId: string },
+    @ConnectedSocket() socket: Socket,
+  ) {
+    const room = this.rooms[data.roomId];
+    const player = room.players[socket.id];
+
+    if (!room || !player) {
+      // Optional: handle room not found error
+      return;
+    }
+
+    this.server
+      .to(data.roomId)
+      .emit('updatePlayers', Object.values(room.players));
+  }
+
+  @SubscribeMessage('inviteGuest')
+  inviteGuest(
+    @MessageBody() data: { roomId: string },
+    @ConnectedSocket() socket: Socket,
+  ) {
+    const room = this.rooms[data.roomId];
+    const player = room.players[socket.id];
+
+    if (!room || !player) {
+      // Optional: handle room not found error
+      return;
+    }
+
+    const card = player.drawCards();
+    console.log(card);
+
+    if (
+      card.trouble == true &&
+      player.used.filter((c) => c.trouble === true).length > 2
+    ) {
+      this.server
+        .to(room.id)
+        .emit('lostRound', { message: "trop de trouble, c'est perdu !" });
+      return;
+    }
+
+    if (player.used.length >= 5) {
+      this.server
+        .to(room.id)
+        .emit('error', { message: "Trop de monde, c'est perdu !" });
+      return;
+    }
+
+    player.addCard(card);
+
+    this.server.to(room.id).emit('updatePlayers', Object.values(room.players));
+
+    this.server.to(room.id).emit('openMarket');
   }
 }
