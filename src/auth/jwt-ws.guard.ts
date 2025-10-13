@@ -1,26 +1,57 @@
-// jwt-ws.guard.ts
-import { Injectable, CanActivate, ExecutionContext } from '@nestjs/common';
+// src/auth/jwt-ws.guard.ts
+import {
+  Injectable,
+  CanActivate,
+  ExecutionContext,
+  ForbiddenException,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { Observable } from 'rxjs';
+import { PartyGateway } from 'src/gateway/party.gateway';
+import { forwardRef, Inject } from '@nestjs/common';
 
 @Injectable()
 export class WsJwtGuard implements CanActivate {
-  constructor(private jwtService: JwtService) {}
+  constructor(
+    private readonly jwtService: JwtService,
+    @Inject(forwardRef(() => PartyGateway))
+    private readonly gateway: PartyGateway,
+  ) {}
 
-  canActivate(
-    context: ExecutionContext,
-  ): boolean | Promise<boolean> | Observable<boolean> {
+  canActivate(context: ExecutionContext): boolean {
     const client = context.switchToWs().getClient();
-    const token = client.handshake.auth?.token; // on récupère le token du handshake
+    const data = context.switchToWs().getData();
 
-    if (!token) return false;
+    const token = client.handshake.auth?.token;
+    if (!token) {
+      throw new ForbiddenException('No token provided');
+    }
 
     try {
       const payload = this.jwtService.verify(token);
-      client.user = payload; // on stocke l'user sur le socket pour l’utiliser plus tard
-      return true;
-    } catch (err) {
-      return false;
+      client.user = payload; // on stocke l’utilisateur
+    } catch (e) {
+      throw new ForbiddenException('Invalid token');
     }
+
+    const roomId = data?.roomId;
+    if (!roomId) {
+      throw new ForbiddenException('Missing roomId in message');
+    }
+
+    const room = this.gateway.getRoom(roomId);
+    if (!room) {
+      throw new ForbiddenException('Room not found');
+    }
+
+    const currentPlayer = room.getCurrentPlayer();
+    if (!currentPlayer) {
+      throw new ForbiddenException('No current player');
+    }
+
+    if (currentPlayer.socketId !== client.id) {
+      throw new ForbiddenException('Not your turn');
+    }
+
+    return true;
   }
 }

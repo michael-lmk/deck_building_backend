@@ -7,7 +7,7 @@ import {
   OnGatewayDisconnect,
   OnGatewayConnection,
 } from '@nestjs/websockets';
-import { UsePipes, ValidationPipe } from '@nestjs/common';
+import { UseGuards, UsePipes, ValidationPipe } from '@nestjs/common';
 import { Server, Socket } from 'socket.io';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -18,6 +18,7 @@ import { CreateRoomDto } from '../dtos/create-room.dto';
 import { JoinRoomDto } from '../dtos/join-room.dto';
 import { PlayerReadyDto } from '../dtos/player-ready.dto';
 import { JwtService } from '@nestjs/jwt';
+import { WsJwtGuard } from 'src/auth/jwt-ws.guard';
 
 @WebSocketGateway({ cors: { origin: '*' } })
 export class PartyGateway implements OnGatewayConnection, OnGatewayDisconnect {
@@ -33,6 +34,10 @@ export class PartyGateway implements OnGatewayConnection, OnGatewayDisconnect {
     const file = path.join(__dirname, '../assets/cards.json');
     this.allCards = JSON.parse(fs.readFileSync(file, 'utf-8'))
       .cards as CardsJson;
+  }
+
+  getRoom(roomId: string): Room | undefined {
+    return this.rooms[roomId];
   }
 
   handleConnection(socket: Socket) {
@@ -177,26 +182,7 @@ export class PartyGateway implements OnGatewayConnection, OnGatewayDisconnect {
     }
   }
 
-  @SubscribeMessage('startRound')
-  initRound(
-    @MessageBody() data: { roomId: string },
-    @ConnectedSocket() socket: Socket,
-  ) {
-    const room = this.rooms[data.roomId];
-    const player = room.players[socket.id];
-
-    if (!room || !player) {
-      // Optional: handle room not found error
-      return;
-    }
-
-    this.server.to(data.roomId).emit('updateRoom', room);
-
-    this.server
-      .to(data.roomId)
-      .emit('updatePlayers', Object.values(room.players));
-  }
-
+  @UseGuards(WsJwtGuard)
   @SubscribeMessage('inviteGuest')
   inviteGuest(
     @MessageBody() data: { roomId: string },
@@ -211,14 +197,14 @@ export class PartyGateway implements OnGatewayConnection, OnGatewayDisconnect {
     }
 
     const card = player.drawCards();
-    console.log(card);
 
     player.addCard(card);
-    console.log(player);
 
     this.server.to(room.id).emit('updatePlayers', Object.values(room.players));
 
     if (player.used.length > player.houseCapacity) {
+      console.log('Perdu trop de monde');
+
       this.server
         .to(room.id)
         .emit('lostRound', { message: "Trop de monde, c'est perdu !" });
@@ -226,9 +212,11 @@ export class PartyGateway implements OnGatewayConnection, OnGatewayDisconnect {
     }
 
     if (player.used.filter((c) => c.trouble === true).length > 2) {
+      console.log('Perdu trop de trouble');
       this.server
         .to(room.id)
         .emit('lostRound', { message: "trop de trouble, c'est perdu !" });
+
       return;
     }
 
@@ -237,6 +225,7 @@ export class PartyGateway implements OnGatewayConnection, OnGatewayDisconnect {
     }
   }
 
+  @UseGuards(WsJwtGuard)
   @SubscribeMessage('toggleMarket')
   endDrawPhase(
     @MessageBody() data: { roomId: string },
@@ -247,6 +236,16 @@ export class PartyGateway implements OnGatewayConnection, OnGatewayDisconnect {
     this.server.to(data.roomId).emit('toggleMarket');
   }
 
+  @UseGuards(WsJwtGuard)
+  @SubscribeMessage('toggleLost')
+  toggleLostModal(
+    @MessageBody() data: { roomId: string },
+    @ConnectedSocket() socket: Socket,
+  ) {
+    this.server.to(data.roomId).emit('lostRound');
+  }
+
+  @UseGuards(WsJwtGuard)
   @SubscribeMessage('nextPlayer')
   nextPlayer(
     @MessageBody() data: { roomId: string },
@@ -256,9 +255,12 @@ export class PartyGateway implements OnGatewayConnection, OnGatewayDisconnect {
     if (!room) return;
 
     const currentPlayer = room.getCurrentPlayer();
+    currentPlayer.initializeRound();
 
     const next = room.nextPlayer();
     next.initializeRound();
+
+    console.log('turn of : ', next.socketId);
 
     // Notifie le joueur suivant
     this.server.to(next.socketId).emit('yourTurn');

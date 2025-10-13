@@ -5,8 +5,9 @@ import { AuthController } from './auth.controller';
 @Module({
   imports: [
     JwtModule.register({
-      secret: 'SUPER_SECRET_KEY', // à mettre dans .env plus tard
-      signOptions: { expiresIn: '10h' },
+      global: true, // ✅ rend le module accessible partout
+      secret: process.env.JWT_SECRET || 'super-secret-key',
+      signOptions: { expiresIn: '7d' },
     }),
   ],
   controllers: [AuthController],
