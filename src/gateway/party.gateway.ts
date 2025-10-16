@@ -146,82 +146,83 @@ export class PartyGateway implements OnGatewayConnection, OnGatewayDisconnect {
       .emit('updatePlayers', Object.values(room.players));
   }
 
-  @UsePipes(new ValidationPipe())
   @SubscribeMessage('playerReady')
-  playerReady(
-    @MessageBody() data: PlayerReadyDto,
+  handlePlayerReady(
+    @MessageBody() data: { roomId: string; playerName: string },
     @ConnectedSocket() socket: Socket,
   ) {
     const room = this.rooms[data.roomId];
-    const player = room.players[socket.id];
+    if (!room) return;
 
-    if (!room || !player) {
-      // Optional: handle room not found error
-      return;
-    }
+    const player = room.players[socket.id];
+    if (!player) return;
 
     player.toggleReady();
 
-    // Convertir en tableau pour l’envoi
-    this.server
-      .to(data.roomId)
-      .emit('updatePlayers', Object.values(room.players));
+    // Vérifie si tous les joueurs sont prêts
+    const allReady = Object.values(room.players).every((p) => p.ready);
 
-    if (
-      Object.values(room.players).every((p) => p.ready) &&
-      Object.values(room.players).length >= 1
-    ) {
-      this.server.to(data.roomId).emit('startGame', room);
-
+    if (allReady) {
+      //  Démarre la partie
+      room.started = true;
       room.initTurnOrder();
-      const firstPlayer = room.getCurrentPlayer();
-      firstPlayer.initializeRound();
 
+      // Génère le market
+      room.market = room.generateInitialMarket(this.allCards);
+
+      // Initialise chaque joueur pour le round
+      Object.values(room.players).forEach((p) => p.initializeRound());
+
+      // Notifie tous les joueurs que la partie commence
+      this.server.to(room.id).emit('startGame', { market: room.market });
+
+      //  Lance le premier tour
       this.server.to(room.id).emit('updateRoom', room);
-      this.server.to(firstPlayer.socketId).emit('yourTurn');
+      const currentPlayer = room.getCurrentPlayer();
+      this.server
+        .to(room.id)
+        .emit('yourTurn', { socketId: currentPlayer.socketId });
     }
+
+    // Met à jour les joueurs
+    this.server.to(room.id).emit('updatePlayers', Object.values(room.players));
   }
 
-  @UseGuards(WsJwtGuard)
   @SubscribeMessage('inviteGuest')
   inviteGuest(
-    @MessageBody() data: { roomId: string },
+    @MessageBody() data: { roomId: string; isAuto?: boolean },
     @ConnectedSocket() socket: Socket,
   ) {
     const room = this.rooms[data.roomId];
-    const player = room.players[socket.id];
+    const player = room?.players[socket.id];
+    if (!room || !player) return;
 
-    if (!room || !player) {
-      // Optional: handle room not found error
+    const isAuto = !!data.isAuto;
+
+    // bloque le spam manuel concurrent
+    if (!isAuto && !player.lockManualAction()) {
       return;
     }
 
     const card = player.drawCards();
+    if (!card) return socket.emit('noCard');
 
-    player.addCard(card);
+    const result = player.tryAddCard(card, { allowOverflow: isAuto });
 
-    this.server.to(room.id).emit('updatePlayers', Object.values(room.players));
-
-    if (player.used.length > player.houseCapacity) {
-      console.log('Perdu trop de monde');
-
+    if (result.success) {
       this.server
         .to(room.id)
-        .emit('lostRound', { message: "Trop de monde, c'est perdu !" });
-      return;
-    }
+        .emit('updatePlayers', Object.values(room.players));
 
-    if (player.used.filter((c) => c.trouble === true).length > 2) {
-      console.log('Perdu trop de trouble');
+      if (player.used.length === player.houseCapacity) {
+        this.endDrawPhase({ roomId: data.roomId }, socket);
+      }
+    } else if (result.reason) {
+      // perte déclenchée
       this.server
         .to(room.id)
-        .emit('lostRound', { message: "trop de trouble, c'est perdu !" });
-
-      return;
-    }
-
-    if (player.used.length === player.houseCapacity) {
-      this.endDrawPhase({ roomId: data.roomId }, socket);
+        .emit('updatePlayers', Object.values(room.players));
+      this.server.to(room.id).emit('lostRound', { message: result.reason });
     }
   }
 
@@ -232,7 +233,10 @@ export class PartyGateway implements OnGatewayConnection, OnGatewayDisconnect {
     @ConnectedSocket() socket: Socket,
   ) {
     console.log('togglemarket');
+    const room = this.rooms[data.roomId];
+    const player = room.getCurrentPlayer();
 
+    player.countScore();
     this.server.to(data.roomId).emit('toggleMarket');
   }
 

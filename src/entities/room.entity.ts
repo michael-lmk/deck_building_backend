@@ -1,5 +1,5 @@
 import { Player } from './player.entity';
-import { Card } from './card.entity';
+import { Card, CardsJson } from './card.entity';
 
 export class Room {
   id: string;
@@ -62,5 +62,46 @@ export class Room {
   initTurnOrder() {
     this.turnOrder = Object.keys(this.players);
     this.currentTurnIndex = 0;
+  }
+
+  generateInitialMarket(cardBase: CardsJson) {
+    const { star, non_star } = cardBase;
+
+    // On tire 2 stars aléatoires
+    const stars = this.shuffle([...star]).slice(0, 2);
+
+    // On veut remplir le reste avec des non-stars cohérents
+    const marketSize = 15; // total cartes du market
+    const remaining = marketSize - stars.length;
+
+    const affordableNonStars = non_star.filter((c) => c.cost <= 6);
+    const highCostNonStars = non_star.filter((c) => c.cost > 6);
+
+    const nonStars: Card[] = [];
+
+    while (nonStars.length < remaining) {
+      const pool = Math.random() < 0.8 ? affordableNonStars : highCostNonStars;
+      const candidate = pool[Math.floor(Math.random() * pool.length)];
+
+      // Vérifie si elle n'est pas déjà dans le market
+      if (![...stars, ...nonStars].some((c) => c.name === candidate.name)) {
+        nonStars.push(candidate);
+      }
+    }
+
+    // Market final trié par coût croissant
+    const market = [...stars, ...nonStars].sort(
+      (a, b) => (a.cost ?? 0) - (b.cost ?? 0),
+    );
+
+    return market;
+  }
+
+  // Utilitaire simple pour mélanger un tableau
+  shuffle(array) {
+    return array
+      .map((v) => ({ v, sort: Math.random() }))
+      .sort((a, b) => a.sort - b.sort)
+      .map(({ v }) => v);
   }
 }
